@@ -159,7 +159,7 @@ class DealerHand(Hand):
             status = f"Status: {self.status}"
 
         lines = [
-            'Hand:',
+            'Dealer Hand:',
             cards,
             total,
             status

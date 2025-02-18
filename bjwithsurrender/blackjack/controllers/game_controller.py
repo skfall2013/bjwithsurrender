@@ -580,11 +580,14 @@ class GameController:
 
     def render_table(self):
         """Print out the players and the hands of cards (if they've been dealt)."""
-        print(header('TABLE'))
-        
+        # print(header('TABLE'))
+        # Print the gambler's name and bankroll
+        print(f"️Bankroll: {money_format(self.gambler.bankroll)}  |  Auto-Wager: {money_format(self.gambler.auto_wager)}")
+
         # Print the dealer's hand. If `hide_dealer` is True, don't factor in the dealer's buried card.
         num_dashes = len(self.dealer.name) + 6
-        print(f"{'-'*num_dashes}\n   {self.dealer.name.upper()}   \n{'-'*num_dashes}\n")
+        # print(f"{'-'*num_dashes}\n   {self.dealer.name.upper()}   \n{'-'*num_dashes}\n")
+        #print(f"️♦️{self.dealer.name.upper()}️")
         if self.dealer.hand:
             print(self.dealer.hand.pretty_format(hide=self.hide_dealer))
         else:
@@ -592,7 +595,7 @@ class GameController:
 
         # Print the gambler's hand(s)
         num_dashes = len(self.gambler.name) + 6
-        print(f"\n{'-'*num_dashes}\n   {self.gambler.name.upper()}   \n{'-'*num_dashes}\n\nBankroll: {money_format(self.gambler.bankroll)}  |  Auto-Wager: {money_format(self.gambler.auto_wager)}\n")
+
         if self.gambler.hands:
             for hand in self.gambler.hands:
                 print(hand.pretty_format())

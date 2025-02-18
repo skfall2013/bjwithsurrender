@@ -63,7 +63,9 @@ This mode launches an interactive CLI game for the user to play blackjack agains
 To launch the interactive game mode, run this script:
 
 ```
-$ python play.py
+cd /Users/sankim/PycharmProjects/bjwithsurrender/bjwithsurrender
+
+$ python play.py --default
 ```
 
 The user can pass an optional `--default` flag to use the default game configuration instead of setting it up in-game.
