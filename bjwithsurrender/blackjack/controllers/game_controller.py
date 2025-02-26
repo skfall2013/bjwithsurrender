@@ -5,7 +5,7 @@ from blackjack.analytics.metric_tracker import MetricTracker
 from blackjack.exc import InsufficientBankrollError
 from blackjack.models.hand import DealerHand, GamblerHand
 from blackjack.display_utils import clear, header, money_format, pct_format
-
+import keyboard
 
 def render_after(instance_method):
     """Decorator for calling the `render()` instance method after calling an instance method."""
@@ -285,7 +285,7 @@ class GameController:
 
             # Handle single-card hands that result from splitting
             if len(hand.cards) == 1:
-                
+
                 # Hit the hand automatically to make it complete.
                 self.hit_hand(hand)
 
@@ -319,6 +319,9 @@ class GameController:
             elif action == 'Split':
                 self.split_hand(hand)  # Put the second card into a new hand and keep playing this hand.
 
+            elif action == 'Surrender':
+                self.handle_surrender(hand)  # Handle the surrender action.
+
             else:
                 raise Exception('Unhandled response.')  # Should never get here
 
@@ -328,6 +331,13 @@ class GameController:
             elif hand.is_busted():
                 self.set_hand_status(hand, 'Busted')
                 self.set_hand_outcome(hand, 'Loss')
+
+    def handle_surrender(self, hand):
+        """Handle the surrender action."""
+        self.gambler.bankroll -= hand.wager / 2
+        self.set_hand_status(hand, 'Surrendered')
+        self.set_hand_outcome(hand, 'Surrender')
+        self.add_activity(f"{self.gambler.name} has surrendered. Half of the bet is lost.")
 
     def get_hand_options(self, hand):
         """Get the options (available actions) that can be taken on a hand."""
@@ -522,6 +532,9 @@ class GameController:
         elif hand.outcome == 'Loss':
             self.add_activity(f"Hand {hand.hand_number}: Forfeiting hand wager of {money_format(hand.wager)}.")
 
+        elif hand.outcome == 'Surrender':
+            self.add_activity(f"Hand {hand.hand_number}: Surrendered. Half of the wager is forfeited.")
+
         else:
             raise ValueError(f"Unhandled hand outcome: {hand.outcome}")
 
@@ -563,7 +576,13 @@ class GameController:
 
         # Pause exectution until the user wants to proceed if applicable.
         if self.verbose:
-            input('Push ENTER to proceed => ')
+            print('Push ENTER to proceed => ')
+            while True:
+                if keyboard.is_pressed('enter'):
+                    break
+                elif keyboard.is_pressed('esc'):
+                    print('Exiting the game...')
+                    exit()
 
     def finalize_game(self):
         """Wrap up the game, rendering analytics and creating graphs if necessary."""

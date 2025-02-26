@@ -65,7 +65,7 @@ To launch the interactive game mode, run this script:
 ```
 cd /Users/sankim/PycharmProjects/bjwithsurrender/bjwithsurrender
 
-$ python play.py --default
+$sudo python play.py --default
 ```
 
 The user can pass an optional `--default` flag to use the default game configuration instead of setting it up in-game.

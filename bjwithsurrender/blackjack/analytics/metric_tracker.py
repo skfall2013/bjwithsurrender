@@ -10,6 +10,7 @@ class MetricTracker:
         self.insurance_losses = 0
         self.gambler_blackjacks = 0
         self.dealer_blackjacks = 0
+        self.surrendered = 0
 
         # Bankroll over time
         self.bankroll_progression = []
@@ -37,6 +38,8 @@ class MetricTracker:
             self.gambler_blackjacks += 1
         elif metric == 'dealer blackjacks':
             self.dealer_blackjacks += 1
+        elif metric == 'surrendered':
+            self.surrendered += 1
         else:
             raise ValueError(f"Unsupported metric: {metric}")
 
@@ -55,6 +58,8 @@ class MetricTracker:
             self._increment_metric('pushes')
         elif hand.outcome == 'Insurance Win':
             self._increment_metric('insurance wins')
+        elif hand.outcome == 'Surrender':
+            self._increment_metric('surrendered')
         else:
             raise ValueError(f"Unsupported hand outcome: {hand.outcome}")
 

@@ -11,7 +11,8 @@ class Hand:
             self.status = 'Blackjack'
 
     def __str__(self):
-        return ' | '.join(str(card) for card in self.cards)
+        return ' | '.join(str(card.value) for card in self.cards)
+        #return ' | '.join(str(card) for card in self.cards)
 
     def __repr__(self):
         return self.__str__()
@@ -113,12 +114,13 @@ class GamblerHand(Hand):
         
         lines = [
             f"Hand {self.hand_number}:",
-            f"Cards: {self}",
+            f"Player Cards: {self}",
             f"Total: {self.get_total_to_display()}",
             f"Wager: {money_format(self.wager)}",
             f"Status: {self.status}",
             f"Outcome: {self.outcome}{extra_outcome}",
-            f"Net: {money_format(self.earnings - self.wager - self.insurance)}"
+            #f"Net: {money_format(self.earnings - self.wager - self.insurance)}"
+            f"Net: {money_format(self.earnings - (self.wager / 2 if self.outcome == 'Surrender' else self.wager) - self.insurance)}"
         ]
         
         return '\n\t'.join(lines)
@@ -154,7 +156,7 @@ class DealerHand(Hand):
             total = f"Total: {up_card.value if up_card.name != 'Ace' else '1 or 11'}"
             status = 'Status: Pending'
         else:
-            cards = f"Cards: {self}"
+            cards = f"Dealer Cards: {self}"
             total = f"Total: {self.get_total_to_display()}"
             status = f"Status: {self.status}"
 
