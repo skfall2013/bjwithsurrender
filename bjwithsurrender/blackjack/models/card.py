@@ -23,7 +23,8 @@ class Card:
         self.value = value
 
     def __str__(self):
-        return f"{self.name} of {self.suit}"
+        #return f"{self.name} of {self.suit}"
+        return f"{self.name}"
 
     def __repr__(self):
         return self.__str__()

@@ -8,3 +8,4 @@ setup(
     packages=['blackjack'],
     install_requires=['matplotlib', 'pandas', 'tqdm']
 )
+

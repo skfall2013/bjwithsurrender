@@ -156,12 +156,12 @@ class DealerHand(Hand):
             total = f"Total: {up_card.value if up_card.name != 'Ace' else '1 or 11'}"
             status = 'Status: Pending'
         else:
-            cards = f"Dealer Cards: {self}"
+            cards = f"Cards: {self}"
             total = f"Total: {self.get_total_to_display()}"
             status = f"Status: {self.status}"
 
         lines = [
-            'Dealer Hand:',
+            'Hand:',
             cards,
             total,
             status

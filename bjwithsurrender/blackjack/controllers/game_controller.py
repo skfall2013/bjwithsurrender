@@ -3,9 +3,11 @@ from time import sleep
 
 from blackjack.analytics.metric_tracker import MetricTracker
 from blackjack.exc import InsufficientBankrollError
+from blackjack.models.card import Card
 from blackjack.models.hand import DealerHand, GamblerHand
 from blackjack.display_utils import clear, header, money_format, pct_format
 import keyboard
+import random
 
 def render_after(instance_method):
     """Decorator for calling the `render()` instance method after calling an instance method."""
@@ -15,6 +17,22 @@ def render_after(instance_method):
             self.render()
     return wrapper
 
+
+def get_card_input(prompt):
+    """Prompt the user to enter a card rank."""
+    while True:
+        card_input = input(prompt).strip()
+        if not card_input:
+            print("Input cannot be empty. Please enter a valid rank.")
+            continue
+        try:
+            value = next(value for rank_name, value in Card.RANKS if rank_name == card_input)
+            if isinstance(value, list):
+                value = value[1]  # Use the higher value for Aces
+            suit = random.choice(Card.SUITS)
+            return Card(suit, card_input, value)
+        except StopIteration:
+            print("Invalid card rank. Please enter a valid rank.")
 
 class GameController:
 
@@ -66,7 +84,7 @@ class GameController:
 
             # Carry out pre-turn flow (for blackjacks, insurance, etc).
             self.play_pre_turn()
-            
+
             # Play the gambler's turn (if necessary).
             self.play_gambler_turn()
 
@@ -87,11 +105,11 @@ class GameController:
         # If the gambler is cashed out or out of money there is no turn to play.
         if self.gambler.is_finished():
             return False
-        
+
         # If max number of turns imposed make sure we haven't hit it yet.
         if self.max_turns:
             return self.turn < self.max_turns
-        
+
         # Checks have passed, play the turn.
         return True
 
@@ -137,11 +155,14 @@ class GameController:
 
     def deal(self):
         """Deal cards from the Shoe to both the gambler and the dealer to form their initial hands."""
-        # Deal 4 cards from the shoe
-        card_1, card_2, card_3, card_4 = self.shoe.deal_n_cards(4)
+        # Get user input for the cards
+        card_2 = get_card_input("Enter the first card for the dealer :")
+        card_4 = get_card_input("Enter the second card for the dealer :")
+        card_1 = get_card_input("Enter the first card for the gambler :")
+        card_3 = get_card_input("Enter the second card for the gambler: ")
+
 
         # Create the Hands from the dealt cards.
-        # Deal like they do a casinos --> one card to each player at a time, starting with the gambler.
         self.gambler.hands.append(GamblerHand(cards=[card_1, card_3]))
         self.dealer.hand = DealerHand(cards=[card_2, card_4])
 
@@ -150,6 +171,12 @@ class GameController:
 
         # Log it
         self.add_activity('Dealing hands.')
+
+        # Show only one dealer card initially
+        self.hide_dealer = True
+        self.render()
+        input("Press ENTER to proceed...")
+        self.hide_dealer = False
 
     def play_pre_turn(self):
         """Carry out pre-turn flow for blackjacks and insurance."""
@@ -278,54 +305,38 @@ class GameController:
 
     def play_gambler_hand(self, hand):
         """Play a gambler hand."""
-        # Set the hand's status to 'Playing', and loop until this status changes.
         self.set_hand_status(hand, 'Playing')
+        self.hide_dealer = True  # Ensure dealer's second card is hidden
 
         while hand.status == 'Playing':
-
-            # Handle single-card hands that result from splitting
             if len(hand.cards) == 1:
-
-                # Hit the hand automatically to make it complete.
                 self.hit_hand(hand)
-
-                # Check if the hand is blackjack. If it is, it's an automatic win (we know dealer doesn't have blackjack)
                 if hand.is_blackjack():
                     self.set_hand_status(hand, 'Blackjack')
                     self.set_hand_outcome(hand, 'Win')
                     break
-
-                # Split Aces only get 1 more card by rule. If they're not a blackjack mark them as stood.
                 if hand.cards[0].is_ace():
                     if hand.status != 'Blackjack':
                         self.set_hand_status(hand, 'Stood')
                     break
 
-            # Get the possible options for hand action to take.
             options = self.get_hand_options(hand)
-
-            # Get the gambler's action (e.g. 'Hit', 'Stand', etc.)
             action = self.strategy.get_hand_action(hand, options, self.dealer.up_card())
+            input(f"Press ENTER to {action}...")
 
             if action == 'Hit':
-                self.hit_hand(hand)  # Deal another card and keep playing the hand.
-
+                self.hit_hand(hand)
             elif action == 'Stand':
-                self.set_hand_status(hand, 'Stood')  # Do nothing, hand is played.
-
+                self.set_hand_status(hand, 'Stood')
             elif action == 'Double':
-                self.double_hand(hand)  # Double the wager and deal another card. Hand is played.
-
+                self.double_hand(hand)
             elif action == 'Split':
-                self.split_hand(hand)  # Put the second card into a new hand and keep playing this hand.
-
+                self.split_hand(hand)
             elif action == 'Surrender':
-                self.handle_surrender(hand)  # Handle the surrender action.
-
+                self.handle_surrender(hand)
             else:
-                raise Exception('Unhandled response.')  # Should never get here
+                raise Exception('Unhandled response.')
 
-            # If the hand is 21 or busted, the hand is done being played.
             if hand.is_21():
                 self.set_hand_status(hand, 'Stood')
             elif hand.is_busted():
@@ -388,45 +399,31 @@ class GameController:
 
     def play_dealer_turn(self):
         """Play the dealer's turn (if necessary)."""
-        # Toggle dealer display options
-        self.hide_dealer = False
+        self.hide_dealer = False  # Reveal dealer's second card
         self.dealer_playing = True
 
-        # The dealer's turn need only be played if there are gambler hands that are still active
         if not any(hand.status in ('Doubled', 'Stood') for hand in self.gambler.hands):
             self.dealer_playing = False
             return
 
         self.add_activity("Playing the Dealer's turn.")
-
-        # Grab the dealer's lone hand to be played
         hand = self.dealer.hand
-
-        # Set the hand's status to 'Playing', and loop until this status changes.
         self.set_hand_status(hand, 'Playing')
-        
-        while hand.status == 'Playing':
 
-            # Pause for user to follow along if applicable
+        while hand.status == 'Playing':
             if self.verbose:
                 sleep(1)
 
-            # Get the hand total.
             total = hand.final_total()
-
-            # Dealer hits under 17 and must hit a soft 17.
             if total < 17 or (total == 17 and hand.is_soft()):
+                input("Press ENTER to draw a card for the dealer...")
                 self.hit_hand(hand)
-            
-            # Dealer stands at 17 and above.
             else:
                 self.set_hand_status(hand, 'Stood')
 
-            # If the hand is busted dealer is done playing.
             if hand.is_busted():
                 self.set_hand_status(hand, 'Busted')
 
-        # Mark the dealer's turn as finished.
         self.dealer_playing = False
 
     def pay_out_hand(self, hand, payout_type):
@@ -560,7 +557,7 @@ class GameController:
         # Render the final status of the turn if applicable.
         if self.verbose:
             self.render()
-        
+
         # Update tracked metrics
         self.track_metrics()
 
@@ -570,19 +567,13 @@ class GameController:
         # Discard both the gambler and the dealer's hands.
         self.gambler.discard_hands()
         self.dealer.discard_hand()
-        
+
         # Reset hide_dealer for the next turn.
         self.hide_dealer = True
 
         # Pause exectution until the user wants to proceed if applicable.
         if self.verbose:
-            print('Push ENTER to proceed => ')
-            while True:
-                if keyboard.is_pressed('enter'):
-                    break
-                elif keyboard.is_pressed('esc'):
-                    print('Exiting the game...')
-                    exit()
+            input('Push ENTER to proceed => ')
 
     def finalize_game(self):
         """Wrap up the game, rendering analytics and creating graphs if necessary."""

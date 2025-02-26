@@ -9,7 +9,7 @@ def get_interactive_configuration(default):
         # Default values
         name = 'Gambler'
         bankroll = 1000.0
-        auto_wager = 100.0
+        auto_wager = 10.0
         number_of_decks = 8
     else:
         # User-entered values
