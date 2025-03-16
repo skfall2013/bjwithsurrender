@@ -155,28 +155,23 @@ class GameController:
 
     def deal(self):
         """Deal cards from the Shoe to both the gambler and the dealer to form their initial hands."""
-        # Get user input for the cards
-        card_2 = get_card_input("Enter the first card for the dealer :")
-        card_4 = get_card_input("Enter the second card for the dealer :")
-        card_1 = get_card_input("Enter the first card for the gambler :")
-        card_3 = get_card_input("Enter the second card for the gambler: ")
+        # Get user input for the dealer's upcard and gambler's initial cards
+        dealer_upcard = get_card_input("Enter the dealer's upcard:")
+        gambler_card1 = get_card_input("Enter the gambler's first card:")
+        gambler_card2 = get_card_input("Enter the gambler's second card:")
 
+        # Create hands with the initial cards
+        self.gambler.hands.append(GamblerHand(cards=[gambler_card1, gambler_card2]))
+        self.dealer.hand = DealerHand(cards=[dealer_upcard])  # Only the upcard initially
 
-        # Create the Hands from the dealt cards.
-        self.gambler.hands.append(GamblerHand(cards=[card_1, card_3]))
-        self.dealer.hand = DealerHand(cards=[card_2, card_4])
-
-        # Place the gambler's auto-wager on the hand. We've already vetted that they have sufficient bankroll.
+        # Place the gambler's auto-wager on the hand
         self.gambler.place_auto_wager()
 
         # Log it
         self.add_activity('Dealing hands.')
 
-        # Show only one dealer card initially
+        # Ensure dealer's cards are displayed appropriately
         self.hide_dealer = True
-        self.render()
-        input("Press ENTER to proceed...")
-        self.hide_dealer = False
 
     def play_pre_turn(self):
         """Carry out pre-turn flow for blackjacks and insurance."""
@@ -291,13 +286,16 @@ class GameController:
 
     def play_gambler_turn(self):
         """Play the gambler's turn, meaning play all of the gambler's hands to completion."""
+        # Keep dealer's second card hidden during gambler's turn
+        self.hide_dealer = True
+
         # Log a message that the turn is being played, or there's no need to play it.
         if any(hand.status == 'Pending' for hand in self.gambler.hands):
             message = f"Playing {self.gambler.name}'s turn."
         else:
             message = f"No turn to play for {self.gambler.name}."
         self.add_activity(message)
-        
+
         # Use a while loop due to the fact that self.hands can grow while iterating (via splitting)
         while any(hand.status == 'Pending' for hand in self.gambler.hands):
             hand = next(hand for hand in self.gambler.hands if hand.status == 'Pending')  # Grab the next unplayed hand
@@ -306,7 +304,7 @@ class GameController:
     def play_gambler_hand(self, hand):
         """Play a gambler hand."""
         self.set_hand_status(hand, 'Playing')
-        self.hide_dealer = True  # Ensure dealer's second card is hidden
+        # self.hide_dealer = True  # Ensure dealer's second card is hidden
 
         while hand.status == 'Playing':
             if len(hand.cards) == 1:
@@ -367,9 +365,15 @@ class GameController:
 
     @render_after
     def hit_hand(self, hand):
-        """Add a card to a hand from the shoe."""
-        card = self.shoe.deal_card()  # Deal a card
-        hand.cards.append(card)  # Add the card to the hand
+        """Add a card to a hand by prompting for user input."""
+        # Determine whose hand is being hit
+        if isinstance(hand, DealerHand):
+            card = get_card_input("Enter the dealer's next card:")
+        else:
+            card = get_card_input("Enter the gambler's next card:")
+
+        # Add the card to the hand
+        hand.cards.append(card)
 
     @render_after
     def split_hand(self, hand):
@@ -399,25 +403,30 @@ class GameController:
 
     def play_dealer_turn(self):
         """Play the dealer's turn (if necessary)."""
-        self.hide_dealer = False  # Reveal dealer's second card
-        self.dealer_playing = True
-
+        # Only proceed if there are hands that need to be evaluated against the dealer
         if not any(hand.status in ('Doubled', 'Stood') for hand in self.gambler.hands):
             self.dealer_playing = False
             return
 
         self.add_activity("Playing the Dealer's turn.")
         hand = self.dealer.hand
+
+        # Prompt for the dealer's hole card if it hasn't been entered yet
+        if len(hand.cards) == 1:
+            hole_card = get_card_input("Enter the dealer's hole card:")
+            hand.cards.append(hole_card)
+            self.add_activity(f"Dealer's hole card is revealed: {hole_card}")
+
+        # Now reveal all dealer cards
+        self.hide_dealer = False
+        self.dealer_playing = True
+
         self.set_hand_status(hand, 'Playing')
 
         while hand.status == 'Playing':
-            if self.verbose:
-                sleep(1)
-
             total = hand.final_total()
             if total < 17 or (total == 17 and hand.is_soft()):
-                input("Press ENTER to draw a card for the dealer...")
-                self.hit_hand(hand)
+                self.hit_hand(hand)  # This will prompt for the dealer's next card
             else:
                 self.set_hand_status(hand, 'Stood')
 
