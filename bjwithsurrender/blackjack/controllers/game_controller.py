@@ -402,37 +402,45 @@ class GameController:
             hand.status = 'Played'
 
     def play_dealer_turn(self):
-        """Play the dealer's turn (if necessary)."""
+        """Play the dealer's turn - simplified to just enter the dealer's final total."""
         # Only proceed if there are hands that need to be evaluated against the dealer
         if not any(hand.status in ('Doubled', 'Stood') for hand in self.gambler.hands):
             self.dealer_playing = False
             return
 
-        self.add_activity("Playing the Dealer's turn.")
+        self.add_activity("Entering the Dealer's final result.")
         hand = self.dealer.hand
 
-        # Prompt for the dealer's hole card if it hasn't been entered yet
-        if len(hand.cards) == 1:
-            hole_card = get_card_input("Enter the dealer's hole card:")
-            hand.cards.append(hole_card)
-            self.add_activity(f"Dealer's hole card is revealed: {hole_card}")
+        # Clear any existing cards after the first one
+        upcard = hand.cards[0]
+        hand.cards = [upcard]
+
+        # Ask for dealer's final total
+        while True:
+            try:
+                dealer_total = int(input("Enter the dealer's final total: "))
+                if dealer_total < upcard.value:
+                    print(f"Error: Total must be at least {upcard.value} (dealer's upcard value)")
+                    continue
+                break
+            except ValueError:
+                print("Please enter a valid number")
+
+        # Create a dummy second card to represent the remaining points
+        remaining_points = dealer_total - upcard.value
+        dummy_card = Card("Hidden", "Total", remaining_points)
+        hand.cards.append(dummy_card)
+
+        # Set appropriate final status
+        if dealer_total > 21:
+            self.set_hand_status(hand, 'Busted')
+            self.add_activity(f"Dealer busts with total of {dealer_total}")
+        else:
+            self.set_hand_status(hand, 'Stood')
+            self.add_activity(f"Dealer stands with total of {dealer_total}")
 
         # Now reveal all dealer cards
         self.hide_dealer = False
-        self.dealer_playing = True
-
-        self.set_hand_status(hand, 'Playing')
-
-        while hand.status == 'Playing':
-            total = hand.final_total()
-            if total < 17 or (total == 17 and hand.is_soft()):
-                self.hit_hand(hand)  # This will prompt for the dealer's next card
-            else:
-                self.set_hand_status(hand, 'Stood')
-
-            if hand.is_busted():
-                self.set_hand_status(hand, 'Busted')
-
         self.dealer_playing = False
 
     def pay_out_hand(self, hand, payout_type):
