@@ -5,13 +5,15 @@ from pathlib import Path
 import os
 
 # SETTINGS - MODIFY THESE
-IMAGE_PATH = "Screenshot/007.png"  # Change to your image path
+IMAGE_PATH = "Screenshot/013.PNG"  # Change to your image path
 SHOW_VISUALIZATION = True
 
-# Regions to search - upper and lower "14" regions
+# Regions to search - four regions total
 REGIONS = [
-    [(633, 588), (721, 588), (721, 680), (633, 680)],  # Upper region
-    [(633, 1415), (721, 1415), (721, 1503), (633, 1503)]  # Lower region
+    [(633, 588), (800, 588), (800, 680), (633, 680)],  # Region 1 - Upper "14" region
+    [(633, 1415), (800, 1415), (800, 1515), (633, 1515)],  # Region 2 - Lower region
+    [(370, 725), (740, 725), (740, 800), (370, 800)],  # Region 3 - New region (customize coordinates)
+    [(370, 1550), (740, 1550), (740, 1650), (370, 1650)]  # Region 4 - New region (customize coordinates)
 ]
 
 
@@ -30,7 +32,7 @@ def main():
     # Process each region
     all_detections = []
     for i, region in enumerate(REGIONS):
-        # print(f"Processing region {i + 1}")
+        print(f"Processing region {i + 1}")
 
         # Extract region coordinates
         x_min = min(p[0] for p in region)
@@ -56,7 +58,7 @@ def main():
 
             # Print result
             print(f"Text: {text}")
-            print(f"Confidence: {confidence:.2f}")
+            # print(f"Confidence: {confidence:.2f}")
             # print(f"Coordinates: {' '.join([f'({pt[0]},{pt[1]})' for pt in adjusted_bbox])}")
 
             all_detections.append((text, confidence, adjusted_bbox))
