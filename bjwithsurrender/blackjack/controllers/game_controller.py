@@ -9,12 +9,15 @@ from blackjack.display_utils import clear, header, money_format, pct_format
 import keyboard
 import random
 
+
 def render_after(instance_method):
     """Decorator for calling the `render()` instance method after calling an instance method."""
+
     def wrapper(self, *args, **kwargs):
         instance_method(self, *args, **kwargs)
         if self.verbose:
             self.render()
+
     return wrapper
 
 
@@ -34,6 +37,26 @@ def get_card_input(prompt):
         except StopIteration:
             print("Invalid card rank. Please enter a valid rank.")
 
+
+def get_total_input(prompt):
+    """Prompt the user to enter a card total."""
+    while True:
+        try:
+            total = int(input(prompt).strip())
+            if total < 4 or total > 21:  # Minimum valid total is 4 (2+2), maximum is 21
+                print("Invalid total. Please enter a value between 4 and 21.")
+                continue
+            return total
+        except ValueError:
+            print("Invalid input. Please enter a numeric value.")
+
+
+def create_dummy_hand(total):
+    """Create a hand with a dummy card that represents the total."""
+    dummy_card = Card("Spades", f"Total:{total}", total)
+    return [dummy_card]
+
+
 class GameController:
 
     def __init__(self, gambler, dealer, shoe, strategy, verbose=True, max_turns=None):
@@ -49,8 +72,8 @@ class GameController:
         self.activity = []
 
         # Render options
-        self.verbose = verbose       # Switch for printing/suppressing output
-        self.hide_dealer = True      # Switch for showing/hiding the dealer's buried card during rendering
+        self.verbose = verbose  # Switch for printing/suppressing output
+        self.hide_dealer = True  # Switch for showing/hiding the dealer's buried card during rendering
         self.dealer_playing = False  # Switch for when dealer is playing and no user actions available
 
         # Keep track of number of turns played (and the max number of turns to play if applicable)
@@ -79,7 +102,7 @@ class GameController:
             if self.gambler.auto_wager == 0:  # If they cashed out, don't play the turn. The game is over.
                 break
 
-            # Deal 2 cards from the shoe to the gambler's and the dealer's hands. Place the gambler's auto-wager on the hand.
+            # Deal cards based on totals instead of individual cards
             self.deal()
 
             # Carry out pre-turn flow (for blackjacks, insurance, etc).
@@ -129,7 +152,8 @@ class GameController:
         # If the gambler doesn't have sufficient bankroll to place their auto-wager, set their auto-wager to their remaining bankroll.
         if not self.gambler.can_place_auto_wager():
             self.gambler.set_new_auto_wager(self.gambler.bankroll)
-            self.add_activity(f"Insufficient bankroll to place current auto-wager. Setting auto-wager to remaining bankroll.")
+            self.add_activity(
+                f"Insufficient bankroll to place current auto-wager. Setting auto-wager to remaining bankroll.")
 
         # Check whether the user wants to change their auto-wager or cash out.
         if self.strategy.wants_to_change_wager():
@@ -154,14 +178,18 @@ class GameController:
                 print(f"{err}. Please try again.")
 
     def deal(self):
-        """Deal cards from the Shoe to both the gambler and the dealer to form their initial hands."""
-        # Get user input for the dealer's upcard and gambler's initial cards
+        """Deal cards based on totals for both gambler and dealer."""
+        # Get the dealer's upcard value
         dealer_upcard = get_card_input("Enter the dealer's upcard:")
-        gambler_card1 = get_card_input("Enter the gambler's first card:")
-        gambler_card2 = get_card_input("Enter the gambler's second card:")
 
-        # Create hands with the initial cards
-        self.gambler.hands.append(GamblerHand(cards=[gambler_card1, gambler_card2]))
+        # Get the gambler's initial total
+        gambler_total = get_total_input("Enter the gambler's initial total: ")
+
+        # Create a dummy hand for the gambler with a card that represents the total
+        gambler_cards = create_dummy_hand(gambler_total)
+
+        # Create hands with the initial cards/totals
+        self.gambler.hands.append(GamblerHand(cards=gambler_cards))
         self.dealer.hand = DealerHand(cards=[dealer_upcard])  # Only the upcard initially
 
         # Place the gambler's auto-wager on the hand
@@ -181,7 +209,7 @@ class GameController:
         gambler_hand = self.gambler.first_hand()
 
         # Check if the gambler has blackjack. Log it if so.
-        gambler_has_blackjack = gambler_hand.is_blackjack()
+        gambler_has_blackjack = gambler_hand.final_total() == 21
         if gambler_has_blackjack:
             self.add_activity(f"{self.gambler.name} has blackjack.")
 
@@ -227,10 +255,12 @@ class GameController:
                     if dealer_has_blackjack:
                         self.hide_dealer = False  # Show the dealer's blackjack.
                         self.set_hand_outcome(gambler_hand, 'Insurance Win')
-                        self.add_activity('Dealer has blackjack.', f"{self.gambler.name}'s insurnace wager wins 2:1 (hand wager loses).")
+                        self.add_activity('Dealer has blackjack.',
+                                          f"{self.gambler.name}'s insurnace wager wins 2:1 (hand wager loses).")
                     else:
                         gambler_hand.lost_insurance = True
-                        self.add_activity('Dealer does not have blackjack.', f"{self.gambler.name}'s insurance wager loses.")
+                        self.add_activity('Dealer does not have blackjack.',
+                                          f"{self.gambler.name}'s insurance wager loses.")
 
                 # If the gambler does not (or cannot) place an insurance bet, they lose if the dealer has blackjack. Otherwise, hand continues.
                 else:
@@ -270,7 +300,7 @@ class GameController:
             # If dealer doesn't have blackjack, the player wins if they have blackjack. Otherwise, play the turn.
             else:
                 self.add_activity('Dealer does not have blackjack.')
-                
+
                 if gambler_has_blackjack:
                     self.add_activity(f"{self.gambler.name} wins 3:2.")
                     self.set_hand_outcome(gambler_hand, 'Win')
@@ -304,20 +334,19 @@ class GameController:
     def play_gambler_hand(self, hand):
         """Play a gambler hand."""
         self.set_hand_status(hand, 'Playing')
-        # self.hide_dealer = True  # Ensure dealer's second card is hidden
 
         while hand.status == 'Playing':
+            # Handle special cases with only one card
             if len(hand.cards) == 1:
-                self.hit_hand(hand)
-                if hand.is_blackjack():
+                current_total = hand.final_total()
+
+                # If total is 21, it's a blackjack
+                if current_total == 21:
                     self.set_hand_status(hand, 'Blackjack')
                     self.set_hand_outcome(hand, 'Win')
                     break
-                if hand.cards[0].is_ace():
-                    if hand.status != 'Blackjack':
-                        self.set_hand_status(hand, 'Stood')
-                    break
 
+            # Get available options and action from strategy
             options = self.get_hand_options(hand)
             action = self.strategy.get_hand_action(hand, options, self.dealer.up_card())
             input(f"Press ENTER to {action}...")
@@ -335,9 +364,11 @@ class GameController:
             else:
                 raise Exception('Unhandled response.')
 
-            if hand.is_21():
+            # Check hand status after action
+            current_total = hand.final_total()
+            if current_total == 21:
                 self.set_hand_status(hand, 'Stood')
-            elif hand.is_busted():
+            elif current_total > 21:
                 self.set_hand_status(hand, 'Busted')
                 self.set_hand_outcome(hand, 'Loss')
 
@@ -354,40 +385,42 @@ class GameController:
         options = OrderedDict([('h', 'Hit'), ('s', 'Stand')])
 
         # Add the option to double if applicable
-        if hand.is_doubleable() and self.gambler.can_place_wager(hand.wager):
+        if len(hand.cards) == 1 and self.gambler.can_place_wager(hand.wager):  # Only first action can be double
             options['d'] = 'Double'
 
-        # Add the option to split if applicable
-        if hand.is_splittable() and self.gambler.can_place_wager(hand.wager):
-            options['x'] = 'Split'
+        # Add the option to split if applicable - not applicable in our simplified version
+        # but keeping the option structure consistent with the original
 
         return options
 
     @render_after
     def hit_hand(self, hand):
-        """Add a card to a hand by prompting for user input."""
-        # Determine whose hand is being hit
-        if isinstance(hand, DealerHand):
-            card = get_card_input("Enter the dealer's next card:")
-        else:
-            card = get_card_input("Enter the gambler's next card:")
+        """Update the hand total after hitting."""
+        # Get the new total
+        new_total = get_total_input("Enter the new total after hit: ")
 
-        # Add the card to the hand
-        hand.cards.append(card)
+        # Replace the dummy card with a new one representing the new total
+        hand.cards = create_dummy_hand(new_total)
 
-    @render_after
     def split_hand(self, hand):
-        """Split a hand."""
-        split_card = hand.cards.pop(1)  # Pop the second card off the hand to make a new hand
-        new_hand = GamblerHand(cards=[split_card], hand_number=len(self.gambler.hands) + 1)  # TODO: Do away with hand_number
-        self.gambler.place_hand_wager(hand.wager, new_hand)  # Place the same wager on the new hand
-        self.gambler.hands.append(new_hand)  # Add the hand to the gambler's list of hands
+        """Split hand - simplified for our total-based approach."""
+        # This would require more complex implementation to track split hands
+        # For now, just showing a message that split is not supported in this version
+        self.add_activity("Split is not supported in the total-based version.")
 
     def double_hand(self, hand):
-        """Double a hand, meaning double the wager on it and hit it with one more card."""
-        self.gambler.place_hand_wager(hand.wager, hand)  # Double the wager on the hand
-        self.hit_hand(hand)  # Add another card to the hand from the shoe
-        self.set_hand_status(hand, 'Doubled')  # Set the status to Doubled
+        """Double a hand, doubling the wager and getting a new total."""
+        # Double the wager
+        self.gambler.place_hand_wager(hand.wager, hand)
+
+        # Get the new total after doubling
+        new_total = get_total_input("Enter the new total after doubling: ")
+
+        # Update the hand with the new total
+        hand.cards = create_dummy_hand(new_total)
+
+        # Set the status to Doubled
+        self.set_hand_status(hand, 'Doubled')
 
     @render_after
     def set_hand_status(self, hand, status):
@@ -397,7 +430,7 @@ class GameController:
     @render_after
     def set_hand_outcome(self, hand, outcome):
         """Set the outcome of the hand, and change the status if applicable."""
-        hand.outcome = outcome        
+        hand.outcome = outcome
         if hand.status == 'Pending':
             hand.status = 'Played'
 
@@ -449,7 +482,7 @@ class GameController:
         if payout_type == 'wager':
             self.perform_hand_payout(hand, 'winning_wager', '1:1')
             self.perform_hand_payout(hand, 'wager_reclaim')
-        
+
         # Pay out winning blackjack hands 3:2 and reclaim the wager
         elif payout_type == 'blackjack':
             self.perform_hand_payout(hand, 'winning_wager', '3:2')
@@ -459,11 +492,11 @@ class GameController:
         elif payout_type == 'insurance':
             self.perform_hand_payout(hand, 'winning_insurance', '2:1')
             self.perform_hand_payout(hand, 'insurance_reclaim')
-        
+
         # Reclaim wager in case of a push
         elif payout_type == 'push':
             self.perform_hand_payout(hand, 'wager_reclaim')
-        
+
         # Should not get here
         else:
             raise ValueError(f"Invalid payout type: '{payout_type}'")
@@ -474,20 +507,20 @@ class GameController:
         if payout_type in ('winning_wager', 'winning_insurance'):
             assert odds, 'Must specify odds for wager and insurance payouts!'
             antecedent, consequent = map(int, odds.split(':'))
-        
+
         # Determine the payout amount by the payout_type (and odds if applicable)
         if payout_type == 'winning_wager':
             amount = hand.wager * antecedent / consequent
             message = f"Adding winning hand payout of {money_format(amount)} to bankroll."
-        
+
         elif payout_type == 'wager_reclaim':
             amount = hand.wager
             message = f"Reclaiming hand wager of {money_format(amount)}."
-        
+
         elif payout_type == 'winning_insurance':
             amount = hand.insurance * antecedent / consequent
             message = f"Adding winning insurance payout of {money_format(amount)} to bankroll."
-        
+
         elif payout_type == 'insurance_reclaim':
             amount = hand.insurance
             message = f"Reclaiming insurance wager of {money_format(amount)}."
@@ -529,7 +562,7 @@ class GameController:
 
         # Perform payout based on the hand outcome
         if hand.outcome == 'Win':
-            if hand.status == 'Blackjack':
+            if hand.status == 'Blackjack' or hand.final_total() == 21:
                 self.pay_out_hand(hand, 'blackjack')
             else:
                 self.pay_out_hand(hand, 'wager')
@@ -562,7 +595,7 @@ class GameController:
         # Track gambler hand metrics
         for hand in self.gambler.hands:
             self.metric_tracker.process_gambler_hand(hand)
-        
+
         # Track dealer hand metrics
         self.metric_tracker.process_dealer_hand(self.dealer.hand)
 
@@ -597,7 +630,7 @@ class GameController:
         # Render game over message if applicable
         if self.verbose:
             self.render_game_over()
-        
+
     def render(self):
         """Print out the entire game (comprised of table, activity log, and user action) to the console."""
         clear()  # Clear previous rendering
@@ -609,12 +642,13 @@ class GameController:
         """Print out the players and the hands of cards (if they've been dealt)."""
         # print(header('TABLE'))
         # Print the gambler's name and bankroll
-        print(f"️Bankroll: {money_format(self.gambler.bankroll)}  |  Auto-Wager: {money_format(self.gambler.auto_wager)}")
+        print(
+            f"️Bankroll: {money_format(self.gambler.bankroll)}  |  Auto-Wager: {money_format(self.gambler.auto_wager)}")
 
         # Print the dealer's hand. If `hide_dealer` is True, don't factor in the dealer's buried card.
         num_dashes = len(self.dealer.name) + 6
         # print(f"{'-'*num_dashes}\n   {self.dealer.name.upper()}   \n{'-'*num_dashes}\n")
-        #print(f"️♦️{self.dealer.name.upper()}️")
+        # print(f"️♦️{self.dealer.name.upper()}️")
         if self.dealer.hand:
             print(self.dealer.hand.pretty_format(hide=self.hide_dealer))
         else:
@@ -625,7 +659,13 @@ class GameController:
 
         if self.gambler.hands:
             for hand in self.gambler.hands:
-                print(hand.pretty_format())
+                # Show total-based representation
+                total = hand.final_total()
+                status_str = f" ({hand.status})" if hand.status else ""
+                print(f"Hand {hand.hand_number}: Total {total}{status_str}")
+                print(f"Wager: {money_format(hand.wager)}")
+                if hand.outcome:
+                    print(f"Outcome: {hand.outcome}")
                 print()
         else:
             print('No hands.')
