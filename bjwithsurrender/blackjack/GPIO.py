@@ -1,4 +1,8 @@
-import RPi.GPIO as GPIO
+try:
+    import RPi.GPIO as GPIO
+except (ImportError, ModuleNotFoundError):
+    from mock_gpio import MockGPIO as GPIO
+
 import time
 
 # Set up GPIO using BCM numbering scheme
