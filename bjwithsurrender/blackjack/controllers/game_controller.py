@@ -88,6 +88,10 @@ class GameController:
         # Track the starting bankroll
         self.metric_tracker.append_bankroll(self.gambler.bankroll)
 
+        # Pause exectution until the user wants to proceed if applicable.
+        if self.verbose:
+            input('Press DEAL to proceed => ')
+
         # Play the game to completion
         while self.play_condition():
 
@@ -179,6 +183,8 @@ class GameController:
 
     def deal(self):
         """Deal cards based on totals for both gambler and dealer."""
+
+
         # Get the dealer's upcard value
         dealer_upcard = get_card_input("Enter the dealer's upcard:")
 
@@ -623,7 +629,7 @@ class GameController:
 
         # Pause exectution until the user wants to proceed if applicable.
         if self.verbose:
-            input('Push ENTER to proceed => ')
+            input('Press REBET to proceed => ')
 
     def finalize_game(self):
         """Wrap up the game, rendering analytics and creating graphs if necessary."""
