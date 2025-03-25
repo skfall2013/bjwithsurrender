@@ -1,3 +1,4 @@
+# master branch Git test
 # mock_gpio.py
 class MockGPIO:
     BCM = 'BCM'

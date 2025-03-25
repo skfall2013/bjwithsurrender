@@ -8,6 +8,7 @@ from blackjack.display_utils import clear, header
 from blackjack.game_setup import setup_game
 from blackjack.strategies.default_static_strategy import DefaultStaticStrategy
 from blackjack.strategies.insurance_static_strategy import InsuranceStaticStrategy
+from blackjack.mock_gpio import MockGPIO
 
 STRATEGY_MAP = {
     'default': DefaultStaticStrategy,
