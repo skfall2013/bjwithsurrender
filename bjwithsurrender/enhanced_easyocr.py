@@ -15,7 +15,7 @@ REGIONS = [
     [(370, 725), (740, 725), (740, 800), (370, 800)],  # Region 3 - New region
     [(370, 1550), (740, 1550), (740, 1650), (370, 1650)]  # Region 4 - New region
 ]
-
+# test
 # OCR SETTINGS
 # Number-only settings for regions 1 and 2
 NUMBER_SETTINGS = {
