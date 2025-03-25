@@ -101,6 +101,13 @@ class GameController:
             # Initialize the activity log for the turn
             self.add_activity(f"Turn #{self.turn}")
 
+            # Check for status text immediately after DEAL/REBET
+            status_text = self.check_for_status_text()
+            if status_text:
+                self.handle_immediate_status(status_text)
+                self.finalize_turn()
+                continue
+
             # Vet the gambler's auto-wager against their bankroll, and ask if they would like to change their wager or cash out.
             self.check_gambler_wager()
             if self.gambler.auto_wager == 0:  # If they cashed out, don't play the turn. The game is over.
@@ -109,11 +116,32 @@ class GameController:
             # Deal cards based on totals instead of individual cards
             self.deal()
 
+            # Check for status text after dealing
+            status_text = self.check_for_status_text()
+            if status_text:
+                self.handle_immediate_status(status_text)
+                self.finalize_turn()
+                continue
+
             # Carry out pre-turn flow (for blackjacks, insurance, etc).
             self.play_pre_turn()
 
+            # Check for status text after pre-turn
+            status_text = self.check_for_status_text()
+            if status_text:
+                self.handle_immediate_status(status_text)
+                self.finalize_turn()
+                continue
+
             # Play the gambler's turn (if necessary).
             self.play_gambler_turn()
+
+            # Check for status text after gambler's turn
+            status_text = self.check_for_status_text()
+            if status_text:
+                self.handle_immediate_status(status_text)
+                self.finalize_turn()
+                continue
 
             # Play the dealer's turn (if necessary).
             self.play_dealer_turn()
@@ -351,6 +379,12 @@ class GameController:
                     self.set_hand_status(hand, 'Blackjack')
                     self.set_hand_outcome(hand, 'Win')
                     break
+
+            # Check for status text after each player action
+            status_text = self.check_for_status_text()
+            if status_text:
+                self.handle_immediate_status(status_text)
+                return
 
             # Get available options and action from strategy
             options = self.get_hand_options(hand)
@@ -702,3 +736,46 @@ class GameController:
             message = 'Better luck next time!'
 
         print(f"{action}\n\n{message}")
+
+    def check_for_status_text(self):
+        """Check if status text has appeared in the OCR regions"""
+        response = input("Has a status text appeared? (BLACKJACK/PUSH/WIN/BUST/SURRENDER) (y/n): ").strip().lower()
+        if response == 'y' or response == 'yes':
+            status = input("What status appeared? (BLACKJACK/PUSH/WIN/BUST/SURRENDER): ").strip().upper()
+            if status in ['BLACKJACK', 'PUSH', 'WIN', 'BUST', 'SURRENDER']:
+                return status
+        return None
+
+    def handle_immediate_status(self, status_text):
+        """Handle the game state based on detected status text"""
+        # Create dummy hands if needed
+        if not self.gambler.hands:
+            self.gambler.hands.append(GamblerHand())
+            self.gambler.place_auto_wager()
+
+        hand = self.gambler.first_hand()
+
+        if status_text == 'BLACKJACK':
+            self.add_activity("Blackjack detected!")
+            self.set_hand_status(hand, 'Blackjack')
+            self.set_hand_outcome(hand, 'Win')
+        elif status_text == 'PUSH':
+            self.add_activity("Push detected!")
+            self.set_hand_status(hand, 'Stood')
+            self.set_hand_outcome(hand, 'Push')
+        elif status_text == 'WIN':
+            self.add_activity("Win detected!")
+            self.set_hand_status(hand, 'Stood')
+            self.set_hand_outcome(hand, 'Win')
+        elif status_text == 'BUST':
+            self.add_activity("Bust detected!")
+            self.set_hand_status(hand, 'Busted')
+            self.set_hand_outcome(hand, 'Loss')
+        elif status_text == 'SURRENDER':
+            self.add_activity("Surrender detected!")
+            self.set_hand_status(hand, 'Surrendered')
+            self.set_hand_outcome(hand, 'Surrender')
+
+        # Add dealer hand if needed
+        if not self.dealer.hand:
+            self.dealer.hand = DealerHand()
