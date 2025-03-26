@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 
 # SETTINGS - MODIFY THESE
-IMAGE_PATH = "Screenshot/013.PNG"  # Change to your image path
+IMAGE_PATH = "../Screenshot/013.PNG"  # Change to your image path
 SHOW_VISUALIZATION = True
 
 # Regions to search - four regions total
