@@ -101,13 +101,14 @@ class GameController:
             # Initialize the activity log for the turn
             self.add_activity(f"Turn #{self.turn}")
 
-            # Check for status text immediately after DEAL/REBET
+            # Check for status text immediately after DEAL/REBET - ONLY CHECK POINT
             status_text = self.check_for_status_text()
             if status_text:
                 self.handle_immediate_status(status_text)
                 self.finalize_turn()
                 continue
 
+            # Normal game flow if no status text detected
             # Vet the gambler's auto-wager against their bankroll, and ask if they would like to change their wager or cash out.
             self.check_gambler_wager()
             if self.gambler.auto_wager == 0:  # If they cashed out, don't play the turn. The game is over.
@@ -116,32 +117,11 @@ class GameController:
             # Deal cards based on totals instead of individual cards
             self.deal()
 
-            # Check for status text after dealing
-            status_text = self.check_for_status_text()
-            if status_text:
-                self.handle_immediate_status(status_text)
-                self.finalize_turn()
-                continue
-
             # Carry out pre-turn flow (for blackjacks, insurance, etc).
             self.play_pre_turn()
 
-            # Check for status text after pre-turn
-            status_text = self.check_for_status_text()
-            if status_text:
-                self.handle_immediate_status(status_text)
-                self.finalize_turn()
-                continue
-
             # Play the gambler's turn (if necessary).
             self.play_gambler_turn()
-
-            # Check for status text after gambler's turn
-            status_text = self.check_for_status_text()
-            if status_text:
-                self.handle_immediate_status(status_text)
-                self.finalize_turn()
-                continue
 
             # Play the dealer's turn (if necessary).
             self.play_dealer_turn()
@@ -379,12 +359,6 @@ class GameController:
                     self.set_hand_status(hand, 'Blackjack')
                     self.set_hand_outcome(hand, 'Win')
                     break
-
-            # Check for status text after each player action
-            status_text = self.check_for_status_text()
-            if status_text:
-                self.handle_immediate_status(status_text)
-                return
 
             # Get available options and action from strategy
             options = self.get_hand_options(hand)
