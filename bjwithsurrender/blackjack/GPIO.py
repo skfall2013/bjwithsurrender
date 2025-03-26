@@ -32,7 +32,7 @@ for pin in set(command_pins.values()):
     GPIO.output(pin, GPIO.LOW)
 
 
-def trigger_command(command, duration=0.5):
+def trigger_command(command, duration=1):
     """
     Trigger a blackjack command by activating the corresponding GPIO pin
 
