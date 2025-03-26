@@ -2,13 +2,11 @@
 
 from argparse import ArgumentParser
 
-from blackjack.analytics.single_game_analyzer import SingleGameAnalyzer
-from blackjack.configuration import get_interactive_configuration, get_simulation_configuration
-from blackjack.display_utils import clear, header
+from blackjack.configuration import get_interactive_configuration
+from blackjack.display_utils import clear
 from blackjack.game_setup import setup_game
 from blackjack.strategies.default_static_strategy import DefaultStaticStrategy
 from blackjack.strategies.insurance_static_strategy import InsuranceStaticStrategy
-from blackjack.mock_gpio import MockGPIO
 
 STRATEGY_MAP = {
     'default': DefaultStaticStrategy,
