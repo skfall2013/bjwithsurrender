@@ -80,6 +80,9 @@ class GameController:
         self.turn = 0
         self.max_turns = max_turns
 
+        # Game counter to track how many games have been played
+        self.games_played = 0
+
         # Metric tracking (for analytics)
         self.metric_tracker = MetricTracker()
 
@@ -618,6 +621,9 @@ class GameController:
 
     def finalize_turn(self):
         """Clean up the current turn in preparation for the next turn."""
+        # Increment the games played counter
+        self.games_played += 1
+
         # Render the final status of the turn if applicable.
         if self.verbose:
             self.render()
@@ -654,15 +660,12 @@ class GameController:
 
     def render_table(self):
         """Print out the players and the hands of cards (if they've been dealt)."""
-        # print(header('TABLE'))
-        # Print the gambler's name and bankroll
+        # Print the gambler's name, bankroll, auto-wager, and games counter
         print(
-            f"️Bankroll: {money_format(self.gambler.bankroll)}  |  Auto-Wager: {money_format(self.gambler.auto_wager)}")
+            f"️Bankroll: {money_format(self.gambler.bankroll)}  |  Auto-Wager: {money_format(self.gambler.auto_wager)}  |  Games Played: {self.games_played}")
 
         # Print the dealer's hand. If `hide_dealer` is True, don't factor in the dealer's buried card.
         num_dashes = len(self.dealer.name) + 6
-        # print(f"{'-'*num_dashes}\n   {self.dealer.name.upper()}   \n{'-'*num_dashes}\n")
-        # print(f"️♦️{self.dealer.name.upper()}️")
         if self.dealer.hand:
             print(self.dealer.hand.pretty_format(hide=self.hide_dealer))
         else:
