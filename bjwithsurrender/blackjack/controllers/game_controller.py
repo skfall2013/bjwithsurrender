@@ -778,4 +778,6 @@ class GameController:
 
         # Add dealer hand if needed
         if not self.dealer.hand:
-            self.dealer.hand = DealerHand()
+            # Create a dealer hand with a dummy card
+            dummy_card = Card("Spades", "Dummy", 10)
+            self.dealer.hand = DealerHand(cards=[dummy_card])
