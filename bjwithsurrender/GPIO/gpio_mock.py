@@ -1,4 +1,4 @@
-# mock_gpio.py
+# gpio_mock.py
 class MockGPIO:
     OUT = 'OUT'
     IN = 'IN'
@@ -27,7 +27,7 @@ class MockGPIO:
     def cleanup(cls):
         print("[MOCK GPIO] Cleanup called. Resetting pins...")
 
-    # Add the trigger_command function mirroring the one in GPIO.py
+    # Add the trigger_command function mirroring the one in gpio.py
     @classmethod
     def trigger_command(cls, command, duration=0.5):
         """
@@ -37,7 +37,7 @@ class MockGPIO:
             command (str): The blackjack command to trigger
             duration (float): How long to keep the signal high in seconds
         """
-        # Define command pins mapping (same as in GPIO.py)
+        # Define command pins mapping (same as in gpio.py)
         command_pins = {
             "hit": 17,
             "stand": 18,
